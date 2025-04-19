@@ -237,63 +237,68 @@ class OrdersController extends Controller
     }
 
 
-    protected function finalizeTransaction(array $data, Customer $customer)
-    {
-        $totalPrice = $data['total_price'];
-        $amountPaid = $data['amount_paid'];
-        $isUsePoints = !empty($data['use_points']);
+   protected function finalizeTransaction(array $data, Customer $customer)
+{
+    $totalPrice = $data['total_price'];
+    $amountPaid = $data['amount_paid'];
+    $isUsePoints = !empty($data['use_points']);  // Memeriksa apakah poin digunakan
 
-        $oldPoints = $customer->points;
-        $earnedPoints = $customer->is_member ? floor($totalPrice * 0.01) : 0;
-        $discount = 0;
+    $oldPoints = $customer->points;
+    $earnedPoints = $customer->is_member ? floor($totalPrice * 0.01) : 0;  // Poin yang diperoleh
+    $discount = 0;
 
-        $pointsUsed = $isUsePoints ? min($oldPoints, $totalPrice) : 0;
+    $pointsUsed = $isUsePoints ? min($oldPoints, $totalPrice) : 0;  // Menghitung poin yang digunakan jika ada
 
-        if ($isUsePoints) {
-            $discount = $pointsUsed;
-            $customer->points = $oldPoints - $discount;
-        }
-
-        $finalPrice = $totalPrice - $discount;
-
-        $customer->points += $earnedPoints;
-        $customer->save();
-
-        $order = Orders::create([
-            'customer_id'   => $customer->id,
-            'total_price'   => $totalPrice,
-            'final_price'   => $finalPrice,
-            'amount_paid'   => $amountPaid,
-            'change'        => $amountPaid - $finalPrice,
-            'points_used'   => $pointsUsed,
-            'user_id'       => auth()->id(),
-        ]);
-
-        foreach ($data['products'] as $item) {
-            $product = Product::find($item['id']);
-            Detail_Orders::create([
-                'order_id'   => $order->id,
-                'product_id' => $product->id,
-                'quantity'   => $item['quantity'],
-                'unit_price' => $product->price,
-                'subtotal'   => $product->price * $item['quantity'],
-            ]);
-
-            // Kurangi stok produk
-            if ($product) {
-                $product->decrement('stock', $item['quantity']);
-            }
-        }
-
-        return redirect()->route('cashier.order.receipt', $order->id);
+    if ($isUsePoints) {
+        $discount = $pointsUsed;
+        $customer->points = $oldPoints - $discount;  // Mengurangi poin jika digunakan
     }
 
+    $finalPrice = $totalPrice - $discount;
+
+    // Poin yang diperoleh selalu ditambahkan meskipun tidak ada diskon
+    $customer->points += $earnedPoints;
+
+    $customer->save();  // Menyimpan perubahan poin pelanggan
+
+    // Membuat transaksi order baru
+    $order = Orders::create([
+        'customer_id'   => $customer->id,
+        'total_price'   => $totalPrice,
+        'final_price'   => $finalPrice,
+        'amount_paid'   => $amountPaid,
+        'change'        => $amountPaid - $finalPrice,
+        'points_used'   => $pointsUsed,
+        'user_id'       => auth()->id(),
+    ]);
+
+    // Menyimpan detail produk untuk setiap produk yang dibeli
+    foreach ($data['products'] as $item) {
+        $product = Product::find($item['id']);
+        Detail_Orders::create([
+            'order_id'   => $order->id,
+            'product_id' => $product->id,
+            'quantity'   => $item['quantity'],
+            'unit_price' => $product->price,
+            'subtotal'   => $product->price * $item['quantity'],
+        ]);
+
+        // Kurangi stok produk setelah dibeli
+        if ($product) {
+            $product->decrement('stock', $item['quantity']);
+        }
+    }
+
+    return redirect()->route('cashier.order.receipt', $order->id);
+}
 
 
 
 
 
-    public function receipt($orderId)
+
+
+public function receipt($orderId)
 {
     $order = Orders::with(['orderDetails.product', 'user'])->findOrFail($orderId);
     $customer = $order->customer;
@@ -306,7 +311,7 @@ class OrdersController extends Controller
     $change = max(0, $amountPaid - $finalPrice);
 
     // Poin yang didapat hanya kalau tidak menggunakan poin untuk diskon
-    $earnedPoints = floor($order->total_price * 0.01); // <-- pakai total_price
+    $earnedPoints = floor($order->total_price * 0.01);  // <-- pakai total_price
 
     // Perkirakan poin sebelum transaksi
     $finalPoints = $customer->points;
@@ -327,6 +332,7 @@ class OrdersController extends Controller
         'finalPoints' => $finalPoints,
     ]);
 }
+
 
 
 
