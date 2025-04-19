@@ -69,20 +69,40 @@
                 });
             </script>
         @endif
+
         @elseif(Auth::user()->role == 'cashier')
         <div class="card">
             <div class="card-body">
             <h1>Dashboard Cashier</h1>
             <h2 class="mb-4">Welcome, Cashier!</h2>
 
-            <div class="card">
-                <div class="card-body text-center">
-                    <h3 class="card-title">Total Sales Today</h3>
-                    <h2 style="font-size: 3rem;">{{ $todaySales }}</h2>
-                    <p class="mb-0 text-muted">Total number of sales that occurred today.</p>
-                  <small>Last Updated: {{ now()->setTimezone('Asia/Jakarta')->format('d M Y H:i') }} WIB</small>
+
+
+        <div class="card mb-3">
+            <div class="card-body text-center">
+                <h3 class="card-title">Total Sales Today</h3>
+                <h2>{{ $todaySales }}</h2>
+                <p class="mb-0 text-muted">Number of transactions today.</p>
+                <small>Last Updated: {{ now()->setTimezone('Asia/Jakarta')->format('d M Y H:i') }} WIB</small>
+            </div>
+        </div>
+
+        <div class="row text-center">
+            <div class="col-md-6">
+                <div class="card bg-light">
+                    <div class="card-body">
+                        <h5>Member Transactions</h5>
+                        <h3>{{ $memberSales }}</h3>
+                    </div>
                 </div>
             </div>
+            <div class="col-md-6">
+                <div class="card bg-light">
+                    <div class="card-body">
+                        <h5>Non-Member Transactions</h5>
+                        <h3>{{ $nonMemberSales }}</h3>
+                    </div>
+                </div>
 
         @else
             <p class="alert alert-danger">Role tidak dikenali.</p>

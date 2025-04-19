@@ -105,10 +105,27 @@ class UserController extends Controller
 
     // Jika role cashier
     elseif ($user->role == 'cashier') {
-        // Total penjualan hari ini untuk cashier
         $todaySales = Orders::whereDate('created_at', Carbon::today())->count();
 
-        return view('dashboard', compact('todaySales'));
+        // Total transaksi member hari ini
+        $memberSales = Orders::whereDate('created_at', Carbon::today())
+        ->whereHas('customer', function ($query) {
+            $query->where('is_member', true);
+        })
+        ->count();
+
+    // Total transaksi non-member hari ini
+    $nonMemberSales = Orders::whereDate('created_at', Carbon::today())
+        ->where(function ($query) {
+            $query->whereNull('customer_id')
+                  ->orWhereHas('customer', function ($q) {
+                      $q->where('is_member', false);
+                  });
+        })
+        ->count();
+
+
+        return view('dashboard', compact('todaySales', 'memberSales', 'nonMemberSales'));
     }
 
     // Jika role tidak dikenali
